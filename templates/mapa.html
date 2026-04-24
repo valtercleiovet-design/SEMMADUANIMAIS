@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mapa de Denúncias</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body { margin: 0; }
+        #map { height: 100vh; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+
+// mapa inicial (Rolim de Moura)
+var map = L.map('map').setView([-11.73, -61.78], 13);
+
+// camada base
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+
+// 🎨 CORES POR STATUS
+function getColor(status) {
+    if (status === "Recebido") return "gray";
+    if (status === "Em fiscalização") return "orange";
+    if (status === "Resolvido") return "green";
+    return "blue";
+}
+
+
+// 📍 CARREGAR DADOS
+fetch('/dados_mapa')
+.then(res => res.json())
+.then(dados => {
+
+    dados.forEach(d => {
+
+        if (d.localizacao && d.localizacao.includes(',')) {
+
+            let coords = d.localizacao.split(',');
+
+            let lat = parseFloat(coords[0]);
+            let lng = parseFloat(coords[1]);
+
+            // marcador estilizado
+            let marker = L.circleMarker([lat, lng], {
+                radius: 9,
+                color: getColor(d.status),
+                fillColor: getColor(d.status),
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            // 📍 LINK GOOGLE MAPS
+            let linkMaps = `https://www.google.com/maps?q=${lat},${lng}`;
+
+            // 💬 POPUP PROFISSIONAL
+            marker.bindPopup(`
+                <div style="min-width:200px;">
+                    <b style="font-size:15px;">${d.tipo}</b><br>
+                    <span>${d.descricao}</span><br><br>
+
+                    <b>Status:</b>
+                    <span style="
+                        color: ${getColor(d.status)};
+                        font-weight: bold;
+                    ">
+                        ${d.status}
+                    </span>
+
+                    <br><br>
+
+                    <a href="${linkMaps}" target="_blank"
+                       style="
+                        display:block;
+                        text-align:center;
+                        background:#0a7d3b;
+                        color:white;
+                        padding:6px;
+                        border-radius:6px;
+                        text-decoration:none;
+                        font-size:13px;
+                       ">
+                       📍 Abrir no Google Maps
+                    </a>
+                </div>
+            `);
+        }
+
+    });
+
+});
+</script>
+
+</body>
+</html>
