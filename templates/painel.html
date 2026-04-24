@@ -16,7 +16,7 @@
         <a href="/logout" class="btn btn-danger">Sair</a>
     </div>
 
-    <!-- 📊 RESUMO (NOVO) -->
+    <!-- 📊 RESUMO -->
     <div class="row mb-3">
 
         <div class="col-md-3">
@@ -57,10 +57,18 @@
 
     </div>
 
-    <!-- BOTÃO DASHBOARD -->
-    <a href="/dashboard" class="btn btn-primary mb-3">
-        📊 Ver Dashboard
-    </a>
+    <!-- 🔘 BOTÕES PRINCIPAIS -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+
+        <a href="/dashboard" class="btn btn-primary">
+            📊 Dashboard
+        </a>
+
+        <a href="/usuarios" class="btn btn-dark">
+            👥 Usuários
+        </a>
+
+    </div>
 
     <div class="card shadow p-3">
 
@@ -120,6 +128,12 @@
                         <a href="/mapa/{{ d[0] }}"
                            class="btn btn-sm btn-info">
                            Mapa
+                        </a>
+
+                        <!-- 🔥 NOVO BOTÃO -->
+                        <a href="/historico/{{ d[0] }}"
+                           class="btn btn-sm btn-dark">
+                           Histórico
                         </a>
 
                     </td>

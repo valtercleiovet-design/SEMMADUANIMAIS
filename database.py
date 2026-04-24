@@ -1,4 +1,5 @@
 import sqlite3
+from werkzeug.security import generate_password_hash
 
 def conectar():
     return sqlite3.connect('banco.db')
@@ -34,25 +35,27 @@ def criar_tabelas():
 
     # 📊 HISTÓRICO
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS historico (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        denuncia_id INTEGER,
-        status TEXT,
-        observacao TEXT,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (denuncia_id) REFERENCES denuncias(id)
-    )
-    """)
-
-    # 🔍 VERIFICA SE ADMIN EXISTE
+CREATE TABLE IF NOT EXISTS historico (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    denuncia_id INTEGER,
+    status TEXT,
+    observacao TEXT,
+    usuario TEXT,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (denuncia_id) REFERENCES denuncias(id)
+)
+""")
+    # 👑 ADMIN PADRÃO (CRIPTOGRAFADO)
     cursor.execute("SELECT * FROM usuarios WHERE email = ?", ('admin@admin.com',))
-    user = cursor.fetchone()
+    admin = cursor.fetchone()
 
-    if not user:
+    if not admin:
+        senha_hash = generate_password_hash('123')
+
         cursor.execute("""
-        INSERT INTO usuarios (email, senha, nome, tipo)
+        INSERT INTO usuarios (nome, email, senha, tipo)
         VALUES (?, ?, ?, ?)
-        """, ('admin@admin.com', '123', 'Administrador', 'admin'))
+        """, ('Administrador', 'admin@admin.com', senha_hash, 'admin'))
 
     conn.commit()
     conn.close()
