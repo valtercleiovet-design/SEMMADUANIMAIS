@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html>
 <head>
     <title>Login</title>
@@ -15,11 +15,21 @@
         <h4 class="text-center mb-3">🔐 SEMMADU</h4>
 
         <form method="POST">
-            <input name="usuario" class="form-control mb-2" placeholder="Usuário" required>
-            <input name="senha" type="password" class="form-control mb-3" placeholder="Senha" required>
+
+            <!-- EMAIL -->
+            <input type="email" name="email" class="form-control mb-2" placeholder="Email" required>
+
+            <!-- SENHA -->
+            <input type="password" name="senha" class="form-control mb-3" placeholder="Senha" required>
 
             <button class="btn btn-success w-100">Entrar</button>
+
         </form>
+
+        <!-- LINK ESQUECI SENHA -->
+        <div class="text-center mt-3">
+            <a href="/esqueci_senha">Esqueci minha senha</a>
+        </div>
 
         {% if erro %}
         <div class="alert alert-danger mt-3">{{ erro }}</div>

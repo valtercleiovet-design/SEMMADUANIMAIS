@@ -3,20 +3,23 @@ import sqlite3
 def conectar():
     return sqlite3.connect('banco.db')
 
+
 def criar_tabelas():
     conn = conectar()
     cursor = conn.cursor()
 
-    # 🔐 TABELA DE USUÁRIOS (LOGIN)
+    # 👤 USUÁRIOS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario TEXT UNIQUE,
-        senha TEXT
+        nome TEXT,
+        email TEXT UNIQUE,
+        senha TEXT,
+        tipo TEXT
     )
     """)
 
-    # 🚨 TABELA DE DENÚNCIAS (MELHORADA)
+    # 🚨 DENÚNCIAS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS denuncias (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +32,7 @@ def criar_tabelas():
     )
     """)
 
-    # 📊 HISTÓRICO DE MOVIMENTAÇÃO (NÍVEL PROFISSIONAL)
+    # 📊 HISTÓRICO
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS historico (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,11 +44,15 @@ def criar_tabelas():
     )
     """)
 
-    # 👤 INSERE USUÁRIO PADRÃO (SE NÃO EXISTIR)
-    cursor.execute("""
-    INSERT OR IGNORE INTO usuarios (usuario, senha)
-    VALUES ('admin', '123')
-    """)
+    # 🔍 VERIFICA SE ADMIN EXISTE
+    cursor.execute("SELECT * FROM usuarios WHERE email = ?", ('admin@admin.com',))
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.execute("""
+        INSERT INTO usuarios (email, senha, nome, tipo)
+        VALUES (?, ?, ?, ?)
+        """, ('admin@admin.com', '123', 'Administrador', 'admin'))
 
     conn.commit()
     conn.close()
