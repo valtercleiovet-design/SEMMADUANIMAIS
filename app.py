@@ -3,10 +3,12 @@ from itsdangerous import URLSafeTimedSerializer
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from database import conectar, criar_tabelas
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import os
+import uuid
 
-# 🔐 CARREGA VARIÁVEIS SEGURAS
+# 🔐 CARREGA VARIÁVEIS
 load_dotenv()
 
 app = Flask(__name__)
@@ -15,9 +17,12 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
 if not app.secret_key:
-    raise Exception("SECRET_KEY não definida no .env")
+    raise Exception("SECRET_KEY não definida")
 
-# 📧 EMAIL (SEGURO)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+
+# 📧 EMAIL
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -192,7 +197,9 @@ def denunciar():
         caminho_imagem = None
 
         if arquivo and arquivo.filename != '':
-            caminho_imagem = os.path.join(UPLOAD_FOLDER, arquivo.filename)
+            nome_seguro = secure_filename(arquivo.filename)
+            nome_final = f"{uuid.uuid4()}_{nome_seguro}"
+            caminho_imagem = os.path.join(UPLOAD_FOLDER, nome_final)
             arquivo.save(caminho_imagem)
 
         conn = conectar()
@@ -275,6 +282,25 @@ def atualizar_status(id, novo_status):
 
     return redirect('/painel')
 
+# 📍 MAPA (CORRIGIDO)
+@app.route('/mapa/<int:id>')
+def mapa(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT localizacao FROM denuncias WHERE id=?", (id,))
+    resultado = cursor.fetchone()
+
+    conn.close()
+
+    if not resultado:
+        return "Denúncia não encontrada"
+
+    return render_template('mapa.html', localizacao=resultado[0])
+
 # 📊 DASHBOARD
 @app.route('/dashboard')
 def dashboard():
@@ -285,6 +311,9 @@ def dashboard():
 # 📊 DADOS DASHBOARD
 @app.route('/dados_dashboard')
 def dados_dashboard():
+    if not session.get('logado'):
+        return jsonify({"erro": "não autorizado"})
+
     conn = conectar()
     cursor = conn.cursor()
 
@@ -306,6 +335,11 @@ def dados_dashboard():
             "valores": [t[1] for t in tipos] if tipos else [0]
         }
     })
+
+# 🚫 ERRO 404
+@app.errorhandler(404)
+def nao_encontrado(e):
+    return "Página não encontrada", 404
 
 # 🚀 RUN
 if __name__ == '__main__':
