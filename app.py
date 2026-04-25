@@ -8,22 +8,20 @@ from dotenv import load_dotenv
 import os
 import uuid
 
-# 🔐 CARREGA VARIÁVEIS
+print("🔥 ESSE APP.PY ESTÁ RODANDO 🔥")
+
 load_dotenv()
 
 app = Flask(__name__)
 
-# 🔐 SEGURANÇA
 app.secret_key = os.getenv('SECRET_KEY')
 
 if not app.secret_key:
     raise Exception("SECRET_KEY não definida")
 
-# ⚠️ IMPORTANTE (corrige comportamento local)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False  # <- MUITO IMPORTANTE PARA TESTE LOCAL
+app.config['SESSION_COOKIE_SECURE'] = False
 
-# 📧 EMAIL
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -43,6 +41,11 @@ criar_tabelas()
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# 🔧 TESTE (OBRIGATÓRIO PRA DEBUG)
+@app.route('/teste')
+def teste():
+    return "FUNCIONANDO OK"
 
 # 🔐 LOGIN
 @app.route('/login', methods=['GET', 'POST'])
@@ -150,6 +153,22 @@ def painel():
                            fiscalizacao=fiscalizacao,
                            resolvido=resolvido)
 
+# 👥 USUÁRIOS
+@app.route('/usuarios')
+def usuarios():
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, nome, email, tipo FROM usuarios")
+    dados = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('usuarios.html', dados=dados)
+
 # 🔄 STATUS
 @app.route('/atualizar_status/<int:id>/<novo_status>')
 def atualizar_status(id, novo_status):
@@ -210,13 +229,14 @@ def atualizar_status(id, novo_status):
 
     return redirect('/painel')
 
-# 📊 DASHBOARD
+# 📊 PÁGINA DASHBOARD
 @app.route('/dashboard')
 def dashboard():
     if not session.get('logado'):
         return redirect('/login')
     return render_template('dashboard.html')
 
+# 📊 DADOS DASHBOARD
 @app.route('/dados_dashboard')
 def dados_dashboard():
     if not session.get('logado'):
@@ -225,21 +245,33 @@ def dados_dashboard():
     conn = conectar()
     cursor = conn.cursor()
 
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'recebido'")
+    recebido = cursor.fetchone()[0]
+
     cursor.execute("""
-        SELECT 
-            SUM(CASE WHEN LOWER(status) = 'recebido' THEN 1 ELSE 0 END),
-            SUM(CASE WHEN LOWER(status) IN ('em fiscalização','em fiscalizacao') THEN 1 ELSE 0 END),
-            SUM(CASE WHEN LOWER(status) = 'resolvido' THEN 1 ELSE 0 END)
+        SELECT COUNT(*) FROM denuncias 
+        WHERE LOWER(status) IN ('em fiscalização','em fiscalizacao')
+    """)
+    fiscalizacao = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
+    resolvido = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COALESCE(TRIM(tipo), 'Não informado'), COUNT(*)
         FROM denuncias
+        GROUP BY TRIM(tipo)
     """)
 
-    recebido, fiscalizacao, resolvido = cursor.fetchone()
+    tipos = cursor.fetchall()
 
     conn.close()
 
     return jsonify({
-        "labels": ["Recebido", "Em fiscalização", "Resolvido"],
-        "valores": [recebido or 0, fiscalizacao or 0, resolvido or 0]
+        "status_labels": ["Recebido", "Em fiscalização", "Resolvido"],
+        "status_valores": [recebido, fiscalizacao, resolvido],
+        "tipos_labels": [t[0] for t in tipos],
+        "tipos_valores": [t[1] for t in tipos]
     })
 
 # 📍 MAPA
@@ -257,6 +289,7 @@ def mapa(id):
     conn.close()
 
     return render_template('mapa.html', localizacao=resultado[0] if resultado else "")
+
 
 # 📜 HISTÓRICO
 @app.route('/historico/<int:id>')
@@ -280,54 +313,6 @@ def historico(id):
 
     return render_template('historico.html', dados=dados)
 
-# 🔑 ESQUECI SENHA
-@app.route('/esqueci_senha', methods=['GET', 'POST'])
-def esqueci_senha():
-    if request.method == 'POST':
-        email = request.form['email']
-
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM usuarios WHERE email=?", (email,))
-        user = cursor.fetchone()
-
-        conn.close()
-
-        if user:
-            token = serializer.dumps(email, salt='recuperar-senha')
-            link = url_for('redefinir_senha', token=token, _external=True)
-
-            msg = Message("Recuperação de senha - SEMMADU", recipients=[email])
-            msg.body = f"Acesse o link:\n\n{link}"
-
-            mail.send(msg)
-
-        return render_template('esqueci_senha.html', mensagem="Se o email existir, enviamos um link.")
-
-    return render_template('esqueci_senha.html')
-
-# 🔑 REDEFINIR SENHA
-@app.route('/redefinir_senha/<token>', methods=['GET', 'POST'])
-def redefinir_senha(token):
-    try:
-        email = serializer.loads(token, salt='recuperar-senha', max_age=3600)
-    except:
-        return "Link inválido ou expirado"
-
-    if request.method == 'POST':
-        senha_hash = generate_password_hash(request.form['senha'])
-
-        conn = conectar()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE usuarios SET senha=? WHERE email=?", (senha_hash, email))
-        conn.commit()
-        conn.close()
-
-        return redirect('/login')
-
-    return render_template('redefinir_senha.html')
-
-# 🚀 RUN (CORRIGIDO)
+# 🚀 RUN
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True)
