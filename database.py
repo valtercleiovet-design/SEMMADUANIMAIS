@@ -1,9 +1,11 @@
 import sqlite3
 from werkzeug.security import generate_password_hash
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def conectar():
-    return sqlite3.connect('banco.db')
-
+    return sqlite3.connect(os.path.join(BASE_DIR, 'banco.db'))
 
 def criar_tabelas():
     conn = conectar()
@@ -33,18 +35,26 @@ def criar_tabelas():
     )
     """)
 
+    # 🔥 GARANTIR COLUNA fiscal_id (SEM QUEBRAR BANCO EXISTENTE)
+    cursor.execute("PRAGMA table_info(denuncias)")
+    colunas = [col[1] for col in cursor.fetchall()]
+
+    if "fiscal_id" not in colunas:
+        cursor.execute("ALTER TABLE denuncias ADD COLUMN fiscal_id INTEGER")
+
     # 📊 HISTÓRICO
     cursor.execute("""
-CREATE TABLE IF NOT EXISTS historico (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    denuncia_id INTEGER,
-    status TEXT,
-    observacao TEXT,
-    usuario TEXT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (denuncia_id) REFERENCES denuncias(id)
-)
-""")
+    CREATE TABLE IF NOT EXISTS historico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        denuncia_id INTEGER,
+        status TEXT,
+        observacao TEXT,
+        usuario TEXT,
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (denuncia_id) REFERENCES denuncias(id)
+    )
+    """)
+
     # 👑 ADMIN PADRÃO (CRIPTOGRAFADO)
     cursor.execute("SELECT * FROM usuarios WHERE email = ?", ('admin@admin.com',))
     admin = cursor.fetchone()

@@ -22,6 +22,7 @@ if not app.secret_key:
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = False
 
+# EMAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -42,11 +43,6 @@ criar_tabelas()
 def index():
     return render_template('index.html')
 
-# 🔧 TESTE (OBRIGATÓRIO PRA DEBUG)
-@app.route('/teste')
-def teste():
-    return "FUNCIONANDO OK"
-
 # 🔐 LOGIN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -59,18 +55,64 @@ def login():
 
         cursor.execute("SELECT * FROM usuarios WHERE email=?", (email,))
         user = cursor.fetchone()
-
         conn.close()
 
         if user and check_password_hash(user[3], senha):
             session['logado'] = True
             session['usuario'] = user[1]
             session['tipo'] = user[4]
+            session['usuario_id'] = user[0]
             return redirect(url_for('painel'))
         else:
             return render_template('login.html', erro="Usuário ou senha inválidos")
 
     return render_template('login.html')
+
+# 🔐 RECUPERAR SENHA
+@app.route('/recuperar', methods=['GET', 'POST'])
+def recuperar():
+    if request.method == 'POST':
+        email = request.form['email']
+
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM usuarios WHERE email=?", (email,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            token = serializer.dumps(email, salt='recuperacao-senha')
+            link = url_for('resetar_senha', token=token, _external=True)
+
+            msg = Message('Recuperação de senha - SEMMADU', recipients=[email])
+            msg.body = f'Acesse o link para redefinir sua senha:\n\n{link}'
+            mail.send(msg)
+
+        return render_template('recuperar.html', mensagem="Se o email existir, o link foi enviado.")
+
+    return render_template('recuperar.html')
+
+# 🔐 RESETAR SENHA
+@app.route('/resetar/<token>', methods=['GET', 'POST'])
+def resetar_senha(token):
+    try:
+        email = serializer.loads(token, salt='recuperacao-senha', max_age=3600)
+    except:
+        return "Link inválido ou expirado"
+
+    if request.method == 'POST':
+        nova_senha = request.form['senha']
+        senha_hash = generate_password_hash(nova_senha)
+
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE usuarios SET senha=? WHERE email=?", (senha_hash, email))
+        conn.commit()
+        conn.close()
+
+        return redirect('/login')
+
+    return render_template('resetar.html')
 
 # 🚪 LOGOUT
 @app.route('/logout')
@@ -144,6 +186,9 @@ def painel():
     cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
     resolvido = cursor.fetchone()[0]
 
+    cursor.execute("SELECT id, nome FROM usuarios WHERE tipo='fiscal'")
+    fiscais = cursor.fetchall()
+
     conn.close()
 
     return render_template('painel.html',
@@ -151,7 +196,8 @@ def painel():
                            total=total,
                            recebido=recebido,
                            fiscalizacao=fiscalizacao,
-                           resolvido=resolvido)
+                           resolvido=resolvido,
+                           fiscais=fiscais)
 
 # 👥 USUÁRIOS
 @app.route('/usuarios')
@@ -169,7 +215,129 @@ def usuarios():
 
     return render_template('usuarios.html', dados=dados)
 
-# 🔄 STATUS
+# 🔥 NOVO: CADASTRAR USUÁRIO (ADMIN)
+@app.route('/cadastrar_usuario', methods=['GET', 'POST'])
+def cadastrar_usuario():
+    if not session.get('logado'):
+        return redirect('/login')
+
+    if session.get('tipo') != 'admin':
+        return "Acesso negado"
+
+    if request.method == 'POST':
+        nome = request.form['nome']
+        email = request.form['email']
+        senha = request.form['senha']
+        tipo = request.form['tipo']
+
+        senha_hash = generate_password_hash(senha)
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO usuarios (nome, email, senha, tipo)
+                VALUES (?, ?, ?, ?)
+            """, (nome, email, senha_hash, tipo))
+
+            conn.commit()
+        except:
+            conn.close()
+            return "Erro: usuário já existe"
+
+        conn.close()
+        return redirect('/usuarios')
+
+    return render_template('cadastrar_usuario.html')
+
+# MAPAS E HISTÓRICO
+
+@app.route('/mapa/<int:id>')
+def mapa(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT localizacao FROM denuncias WHERE id=?", (id,))
+    resultado = cursor.fetchone()
+
+    conn.close()
+
+    if not resultado:
+        return "Denúncia não encontrada"
+
+    return render_template('mapa.html', localizacao=resultado[0])
+
+
+@app.route('/historico/<int:id>')
+def historico(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT status, observacao, usuario, data
+        FROM historico
+        WHERE denuncia_id=?
+        ORDER BY data DESC
+    """, (id,))
+
+    dados = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('historico.html', dados=dados)
+#DASHBOARD
+@app.route('/dashboard')
+def dashboard():
+    if not session.get('logado'):
+        return redirect('/login')
+
+    return render_template('dashboard.html')
+@app.route('/dados_dashboard')
+def dados_dashboard():
+    if not session.get('logado'):
+        return jsonify({"erro": "não autorizado"})
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    # STATUS
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'recebido'")
+    recebido = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM denuncias 
+        WHERE LOWER(status) IN ('em fiscalização','em fiscalizacao')
+    """)
+    fiscalizacao = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
+    resolvido = cursor.fetchone()[0]
+
+    # TIPOS
+    cursor.execute("""
+        SELECT COALESCE(TRIM(tipo), 'Não informado'), COUNT(*)
+        FROM denuncias
+        GROUP BY TRIM(tipo)
+    """)
+
+    tipos = cursor.fetchall()
+
+    conn.close()
+
+    return jsonify({
+        "status_labels": ["Recebido", "Em fiscalização", "Resolvido"],
+        "status_valores": [recebido, fiscalizacao, resolvido],
+        "tipos_labels": [t[0] for t in tipos],
+        "tipos_valores": [t[1] for t in tipos]
+    })
+
 @app.route('/atualizar_status/<int:id>/<novo_status>')
 def atualizar_status(id, novo_status):
     if not session.get('logado'):
@@ -201,6 +369,7 @@ def atualizar_status(id, novo_status):
     status_atual = resultado[0]
     status_atual_norm = status_atual.lower().replace("ç", "c")
 
+    # regras de fluxo
     if status_atual_norm == "resolvido":
         conn.close()
         return redirect('/painel')
@@ -217,102 +386,20 @@ def atualizar_status(id, novo_status):
         conn.close()
         return redirect('/painel')
 
+    # atualizar status
     cursor.execute("UPDATE denuncias SET status=? WHERE id=?", (novo_status_formatado, id))
 
+    # histórico
     cursor.execute("""
         INSERT INTO historico (denuncia_id, status, observacao, usuario)
         VALUES (?, ?, ?, ?)
-    """, (id, novo_status_formatado, "Atualizado pelo sistema", session.get('usuario', 'sistema')))
+    """, (id, novo_status_formatado, "Atualizado pelo sistema", session.get('usuario')))
 
     conn.commit()
     conn.close()
 
     return redirect('/painel')
 
-# 📊 PÁGINA DASHBOARD
-@app.route('/dashboard')
-def dashboard():
-    if not session.get('logado'):
-        return redirect('/login')
-    return render_template('dashboard.html')
-
-# 📊 DADOS DASHBOARD
-@app.route('/dados_dashboard')
-def dados_dashboard():
-    if not session.get('logado'):
-        return jsonify({"erro": "não autorizado"})
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'recebido'")
-    recebido = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT COUNT(*) FROM denuncias 
-        WHERE LOWER(status) IN ('em fiscalização','em fiscalizacao')
-    """)
-    fiscalizacao = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
-    resolvido = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT COALESCE(TRIM(tipo), 'Não informado'), COUNT(*)
-        FROM denuncias
-        GROUP BY TRIM(tipo)
-    """)
-
-    tipos = cursor.fetchall()
-
-    conn.close()
-
-    return jsonify({
-        "status_labels": ["Recebido", "Em fiscalização", "Resolvido"],
-        "status_valores": [recebido, fiscalizacao, resolvido],
-        "tipos_labels": [t[0] for t in tipos],
-        "tipos_valores": [t[1] for t in tipos]
-    })
-
-# 📍 MAPA
-@app.route('/mapa/<int:id>')
-def mapa(id):
-    if not session.get('logado'):
-        return redirect('/login')
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT localizacao FROM denuncias WHERE id=?", (id,))
-    resultado = cursor.fetchone()
-
-    conn.close()
-
-    return render_template('mapa.html', localizacao=resultado[0] if resultado else "")
-
-
-# 📜 HISTÓRICO
-@app.route('/historico/<int:id>')
-def historico(id):
-    if not session.get('logado'):
-        return redirect('/login')
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT status, observacao, usuario, data
-        FROM historico
-        WHERE denuncia_id=?
-        ORDER BY data DESC
-    """, (id,))
-
-    dados = cursor.fetchall()
-
-    conn.close()
-
-    return render_template('historico.html', dados=dados)
-
 # 🚀 RUN
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

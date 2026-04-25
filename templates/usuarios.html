@@ -10,7 +10,14 @@
 
     <h4>👥 Usuários</h4>
 
-    <a href="/painel" class="btn btn-secondary mb-3">⬅ Voltar</a>
+    <div class="d-flex gap-2 mb-3">
+        <a href="/painel" class="btn btn-secondary">⬅ Voltar</a>
+
+        <!-- 🔥 NOVO BOTÃO -->
+        <a href="{{ url_for('cadastrar_usuario') }}" class="btn btn-success">
+            ➕ Novo Usuário
+        </a>
+    </div>
 
     <div class="card p-3 shadow">
 
@@ -30,7 +37,13 @@
                     <td>{{ u[0] }}</td>
                     <td>{{ u[1] }}</td>
                     <td>{{ u[2] }}</td>
-                    <td>{{ u[3] }}</td>
+                    <td>
+                        {% if u[3] == 'admin' %}
+                            <span class="badge bg-dark">Admin</span>
+                        {% else %}
+                            <span class="badge bg-primary">Fiscal</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
