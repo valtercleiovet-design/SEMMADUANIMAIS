@@ -30,7 +30,7 @@
             <textarea name="descricao" class="form-control mb-3" rows="3" required></textarea>
 
             <label class="form-label">Localização</label>
-            <input type="text" id="localizacao" name="localizacao" class="form-control mb-2">
+            <input type="text" id="localizacao" name="localizacao" class="form-control mb-2" placeholder="Digite ou use o GPS" required>
 
             <button type="button" onclick="pegarLocalizacao()" class="btn btn-outline-secondary w-100 mb-3">
                 📍 Usar minha localização
@@ -47,12 +47,24 @@
 
 </div>
 
+<!-- 🔥 SCRIPT FICA AQUI (SEMPRE ANTES DO </body>) -->
 <script>
 function pegarLocalizacao() {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        document.getElementById("localizacao").value =
-            pos.coords.latitude + ", " + pos.coords.longitude;
-    });
+
+    if (!navigator.geolocation) {
+        alert("Seu navegador não suporta GPS");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(pos) {
+            document.getElementById("localizacao").value =
+                pos.coords.latitude + "," + pos.coords.longitude;
+        },
+        function(error) {
+            alert("Não foi possível obter localização. Verifique as permissões.");
+        }
+    );
 }
 </script>
 

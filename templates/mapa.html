@@ -1,101 +1,108 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mapa de Denúncias</title>
+    <title>Mapa</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <style>
-        body { margin: 0; }
-        #map { height: 100vh; }
-    </style>
-</head>
-<body>
-
-<div id="map"></div>
-
-<script>
-
-// mapa inicial (Rolim de Moura)
-var map = L.map('map').setView([-11.73, -61.78], 13);
-
-// camada base
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-
-// 🎨 CORES POR STATUS
-function getColor(status) {
-    if (status === "Recebido") return "gray";
-    if (status === "Em fiscalização") return "orange";
-    if (status === "Resolvido") return "green";
-    return "blue";
-}
-
-
-// 📍 CARREGAR DADOS
-fetch('/dados_mapa')
-.then(res => res.json())
-.then(dados => {
-
-    dados.forEach(d => {
-
-        if (d.localizacao && d.localizacao.includes(',')) {
-
-            let coords = d.localizacao.split(',');
-
-            let lat = parseFloat(coords[0]);
-            let lng = parseFloat(coords[1]);
-
-            // marcador estilizado
-            let marker = L.circleMarker([lat, lng], {
-                radius: 9,
-                color: getColor(d.status),
-                fillColor: getColor(d.status),
-                fillOpacity: 0.8
-            }).addTo(map);
-
-            // 📍 LINK GOOGLE MAPS
-            let linkMaps = `https://www.google.com/maps?q=${lat},${lng}`;
-
-            // 💬 POPUP PROFISSIONAL
-            marker.bindPopup(`
-                <div style="min-width:200px;">
-                    <b style="font-size:15px;">${d.tipo}</b><br>
-                    <span>${d.descricao}</span><br><br>
-
-                    <b>Status:</b>
-                    <span style="
-                        color: ${getColor(d.status)};
-                        font-weight: bold;
-                    ">
-                        ${d.status}
-                    </span>
-
-                    <br><br>
-
-                    <a href="${linkMaps}" target="_blank"
-                       style="
-                        display:block;
-                        text-align:center;
-                        background:#0a7d3b;
-                        color:white;
-                        padding:6px;
-                        border-radius:6px;
-                        text-decoration:none;
-                        font-size:13px;
-                       ">
-                       📍 Abrir no Google Maps
-                    </a>
-                </div>
-            `);
+        body {
+            background-color: #f4f6f9;
         }
 
-    });
+        .card-mapa {
+            max-width: 850px;
+            margin: auto;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
 
-});
+        #map {
+            height: 420px;
+            width: 100%;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .endereco {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn {
+            transition: 0.2s ease;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container py-5">
+
+    <div class="card-mapa">
+
+        <h5 class="mb-2">📍 Localização da denúncia</h5>
+
+        <p id="endereco" class="endereco mb-3">Carregando endereço...</p>
+
+        <div id="map"></div>
+
+        <div class="d-flex justify-content-between mt-4">
+
+            <a href="/painel" class="btn btn-outline-dark px-4 shadow-sm">
+                ⬅ Voltar
+            </a>
+
+            <a href="https://www.google.com/maps?q={{ localizacao }}" 
+               target="_blank"
+               class="btn btn-success px-4 shadow-sm">
+                📍 Abrir no Google Maps
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    var coords = "{{ localizacao }}".split(",");
+
+    var lat = parseFloat(coords[0]);
+    var lon = parseFloat(coords[1]);
+
+    var map = L.map('map').setView([lat, lon], 16);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    L.marker([lat, lon]).addTo(map)
+        .bindPopup("📍 Denúncia registrada aqui")
+        .openPopup();
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("endereco").innerText = data.display_name;
+    })
+    .catch(() => {
+        document.getElementById("endereco").innerText = "Endereço não encontrado";
+    });
 </script>
 
 </body>
