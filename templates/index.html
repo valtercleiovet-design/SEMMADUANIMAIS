@@ -56,5 +56,14 @@
 
 </div>
 
+<!-- 🔥 ATIVAR SERVICE WORKER -->
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/sw.js")
+        .then(() => console.log("Service Worker ativo"))
+        .catch(err => console.log("Erro:", err));
+}
+</script>
+
 </body>
 </html>
