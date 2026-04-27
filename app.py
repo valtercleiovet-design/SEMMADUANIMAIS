@@ -400,6 +400,27 @@ def atualizar_status(id, novo_status):
 
     return redirect('/painel')
 
+@app.route('/excluir_usuario/<int:id>')
+def excluir_usuario(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    if session.get('tipo') != 'admin':
+        return "Acesso negado"
+
+    # impedir apagar a si mesmo
+    if id == session.get('usuario_id'):
+        return "Você não pode excluir seu próprio usuário"
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM usuarios WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect('/usuarios')
+
 # 🚀 RUN
 if __name__ == '__main__':
     app.run()

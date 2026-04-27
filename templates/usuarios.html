@@ -13,10 +13,11 @@
     <div class="d-flex gap-2 mb-3">
         <a href="/painel" class="btn btn-secondary">⬅ Voltar</a>
 
-        <!-- 🔥 NOVO BOTÃO -->
+        {% if session['tipo'] == 'admin' %}
         <a href="{{ url_for('cadastrar_usuario') }}" class="btn btn-success">
             ➕ Novo Usuário
         </a>
+        {% endif %}
     </div>
 
     <div class="card p-3 shadow">
@@ -28,6 +29,7 @@
                     <th>Nome</th>
                     <th>Email</th>
                     <th>Tipo</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
 
@@ -37,6 +39,7 @@
                     <td>{{ u[0] }}</td>
                     <td>{{ u[1] }}</td>
                     <td>{{ u[2] }}</td>
+
                     <td>
                         {% if u[3] == 'admin' %}
                             <span class="badge bg-dark">Admin</span>
@@ -44,6 +47,17 @@
                             <span class="badge bg-primary">Fiscal</span>
                         {% endif %}
                     </td>
+
+                    <td>
+                        {% if session['tipo'] == 'admin' %}
+                        <a href="/excluir_usuario/{{ u[0] }}" 
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('Tem certeza que deseja excluir?')">
+                           Excluir
+                        </a>
+                        {% endif %}
+                    </td>
+
                 </tr>
                 {% endfor %}
             </tbody>
