@@ -155,7 +155,7 @@ def denunciar():
         conn.commit()
         conn.close()
 
-        return redirect(url_for('index'))
+        return render_template('sucesso.html')
 
     return render_template('denunciar.html')
 

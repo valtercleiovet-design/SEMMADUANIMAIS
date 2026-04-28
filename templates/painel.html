@@ -16,10 +16,45 @@
         }
     </style>
 
+    <style>
+html, body {
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 100%;
+}
+     </style>
+
+<style>
+.card {
+    border-radius: 12px;
+}
+
+.btn {
+    border-radius: 10px;
+}
+</style>
+
+<style>
+.card {
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+</style>
+
+<style>
+.btn {
+    padding: 10px;
+    font-size: 15px;
+}
+</style>
+
 </head>
 <body class="bg-light">
 
-<div class="container py-4">
+<div class="container-fluid py-3">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>📋 Painel de Denúncias</h4>
@@ -29,7 +64,7 @@
     <!-- 📊 RESUMO -->
     <div class="row mb-3">
 
-        <div class="col-md-3">
+       <div class="col-6 col-md-3">
             <div class="card text-center shadow">
                 <div class="card-body">
                     <h6>Total</h6>
@@ -68,7 +103,7 @@
     </div>
 
     <!-- 🔘 BOTÕES PRINCIPAIS -->
-    <div class="d-flex gap-2 mb-3 flex-wrap">
+   <div class="d-grid gap-2 mb-3">
 
         <a href="/dashboard" class="btn btn-primary">
             📊 Dashboard
@@ -80,85 +115,73 @@
 
     </div>
 
-    <div class="card shadow p-3">
+   <div class="card shadow p-3">
 
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Tipo</th>
-                    <th>Descrição</th>
-                    <th>Local</th>
-                    <th>Imagem</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
+        <div>
 
-            <tbody>
-                {% for d in dados %}
-                <tr>
-                    <td>{{ d[0] }}</td>
-                    <td>{{ d[1] }}</td>
-                    <td>{{ d[2][:50] }}...</td>
-                    <td>{{ d[3] }}</td>
+    {% for d in dados %}
+    <div class="card mb-3 shadow-sm">
 
-                    <td>
-                        {% if d[4] %}
-                        <a href="{{ d[4] }}" target="_blank" class="btn btn-sm btn-primary">Ver</a>
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
+        <div class="card-body">
 
-                    <!-- STATUS -->
-                    <td>
-                        {% if d[5] == 'Recebido' %}
-                            <span class="badge bg-secondary">Recebido</span>
+            <h6 class="fw-bold">🐾 {{ d[1] }}</h6>
 
-                        {% elif d[5] == 'Em fiscalização' %}
-                            <span class="badge bg-warning text-dark">Em fiscalização</span>
+            <p class="mb-1"><strong>ID:</strong> {{ d[0] }}</p>
 
-                        {% elif d[5] == 'Resolvido' %}
-                            <span class="badge bg-success">Resolvido</span>
-                        {% endif %}
-                    </td>
+            <p class="mb-1">
+                <strong>Descrição:</strong><br>
+                {{ d[2][:80] }}...
+            </p>
 
-                    <!-- AÇÕES -->
-                    <td class="d-flex gap-1 flex-wrap">
+            <p class="mb-1">
+                <strong>Local:</strong><br>
+                {{ d[3] }}
+            </p>
 
-                        {% if d[5] == 'Recebido' %}
-                            <a href="/atualizar_status/{{ d[0] }}/Em_fiscalizacao"
-                               class="btn btn-sm btn-warning"
-                               onclick="return confirm('Iniciar fiscalização?')">
-                               Fiscalizar
-                            </a>
+            <!-- STATUS -->
+            <p class="mb-2">
+                {% if d[5] == 'Recebido' %}
+                    <span class="badge bg-secondary w-100 py-2">Recebido</span>
+                {% elif d[5] == 'Em fiscalização' %}
+                    <span class="badge bg-warning text-dark">Em fiscalização</span>
+                {% elif d[5] == 'Resolvido' %}
+                    <span class="badge bg-success">Resolvido</span>
+                {% endif %}
+            </p>
 
-                        {% elif d[5] == 'Em fiscalização' %}
-                            <a href="/atualizar_status/{{ d[0] }}/Resolvido"
-                               class="btn btn-sm btn-success"
-                               onclick="return confirm('Marcar como resolvido?')">
-                               Resolver
-                            </a>
+            <!-- BOTÕES -->
+            <div class="d-grid gap-2">
 
-                        {% elif d[5] == 'Resolvido' %}
-                            <span class="badge bg-success">✔ Finalizado</span>
-                        {% endif %}
+                {% if d[5] == 'Recebido' %}
+                <a href="/atualizar_status/{{ d[0] }}/Em_fiscalizacao"
+                   class="btn btn-warning btn-sm"
+                   onclick="return confirm('Iniciar fiscalização?')">
+                   Fiscalizar
+                </a>
 
-                        <a href="/mapa/{{ d[0] }}" class="btn btn-sm btn-info">
-                            Mapa
-                        </a>
+                {% elif d[5] == 'Em fiscalização' %}
+                <a href="/atualizar_status/{{ d[0] }}/Resolvido"
+                   class="btn btn-success btn-sm"
+                   onclick="return confirm('Marcar como resolvido?')">
+                   Resolver
+                </a>
+                {% endif %}
 
-                        <a href="/historico/{{ d[0] }}" class="btn btn-sm btn-dark">
-                            Histórico
-                        </a>
+                <a href="/mapa/{{ d[0] }}" class="btn btn-info btn-sm">
+                    📍 Mapa
+                </a>
 
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+                <a href="/historico/{{ d[0] }}" class="btn btn-dark btn-sm">
+                    📜 Histórico
+                </a>
 
-        </table>
+            </div>
+
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
 
     </div>
 
