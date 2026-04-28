@@ -298,46 +298,28 @@ def dashboard():
     if not session.get('logado'):
         return redirect('/login')
 
-    return render_template('dashboard.html')
-@app.route('/dados_dashboard')
-def dados_dashboard():
-    if not session.get('logado'):
-        return jsonify({"erro": "não autorizado"})
-
     conn = conectar()
     cursor = conn.cursor()
 
-    # STATUS
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'recebido'")
-    recebido = cursor.fetchone()[0]
+    cursor.execute("SELECT * FROM denuncias")
+    dados = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT COUNT(*) FROM denuncias 
-        WHERE LOWER(status) IN ('em fiscalização','em fiscalizacao')
-    """)
-    fiscalizacao = cursor.fetchone()[0]
+    total = len(dados)
 
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
-    resolvido = cursor.fetchone()[0]
-
-    # TIPOS
-    cursor.execute("""
-        SELECT COALESCE(TRIM(tipo), 'Não informado'), COUNT(*)
-        FROM denuncias
-        GROUP BY TRIM(tipo)
-    """)
-
-    tipos = cursor.fetchall()
+    recebido = len([d for d in dados if d[5].lower() == 'recebido'])
+    fiscalizacao = len([d for d in dados if 'fiscal' in d[5].lower()])
+    resolvido = len([d for d in dados if d[5].lower() == 'resolvido'])
 
     conn.close()
 
-    return jsonify({
-        "status_labels": ["Recebido", "Em fiscalização", "Resolvido"],
-        "status_valores": [recebido, fiscalizacao, resolvido],
-        "tipos_labels": [t[0] for t in tipos],
-        "tipos_valores": [t[1] for t in tipos]
-    })
-
+    return render_template(
+        'dashboard.html',
+        total=total,
+        recebido=recebido,
+        fiscalizacao=fiscalizacao,
+        resolvido=resolvido,
+        dados=dados
+    )
 @app.route('/atualizar_status/<int:id>/<novo_status>')
 def atualizar_status(id, novo_status):
     if not session.get('logado'):
