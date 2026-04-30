@@ -65,6 +65,25 @@ def login():
             return render_template('login.html', erro="Usuário ou senha inválidos")
 
     return render_template('login.html')
+@app.route('/recuperar', methods=['GET', 'POST'])
+def recuperar():
+    if request.method == 'POST':
+        email = request.form['email']
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM usuarios WHERE email=%s", (email,))
+        user = cursor.fetchone()
+
+        conn.close()
+
+        if user:
+            return render_template('recuperar.html', mensagem="Email encontrado. Em breve enviaremos instruções.")
+
+        return render_template('recuperar.html', mensagem="Email não encontrado.")
+
+    return render_template('recuperar.html')
 
 @app.route('/logout')
 def logout():
