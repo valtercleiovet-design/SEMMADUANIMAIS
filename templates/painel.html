@@ -29,65 +29,64 @@
 <div class="container-fluid py-3">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>📋 Painel de Denúncias</h4>
-    <a href="/logout" class="btn btn-danger">Sair</a>
-</div>
-
-<!-- MENSAGEM DE SUCESSO -->
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <div id="msg" class="alert alert-success text-center shadow">
-        {{ messages[0] }}
+        <h4>📋 Painel de Denúncias</h4>
+        <a href="/logout" class="btn btn-danger">Sair</a>
     </div>
 
-    <script>
-        setTimeout(() => {
-            document.getElementById("msg").style.display = "none";
-        }, 3000);
-    </script>
-  {% endif %}
-{% endwith %}
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div id="msg" class="alert alert-success text-center shadow">
+            {{ messages[0] }}
+        </div>
+
+        <script>
+            setTimeout(() => {
+                document.getElementById("msg").style.display = "none";
+            }, 3000);
+        </script>
+      {% endif %}
+    {% endwith %}
 
     <!-- RESUMO -->
     <div class="row mb-3">
 
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow">
-            <div class="card-body">
-                <h6>Total</h6>
-                <h4>{{ total }}</h4>
+        <div class="col-6 col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h6>Total</h6>
+                    <h4>{{ total }}</h4>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow">
-            <div class="card-body">
-                <h6>Recebido</h6>
-                <h4 class="text-secondary">{{ recebido }}</h4>
+        <div class="col-6 col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h6>Recebido</h6>
+                    <h4 class="text-secondary">{{ recebido }}</h4>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow">
-            <div class="card-body">
-                <h6>Em Atendimento</h6>
-                <h4 class="text-warning">{{ fiscalizacao }}</h4>
+        <div class="col-6 col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h6>Em Atendimento</h6>
+                    <h4 class="text-warning">{{ fiscalizacao }}</h4>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow">
-            <div class="card-body">
-                <h6>Finalizado</h6>
-                <h4 class="text-success">{{ resolvido }}</h4>
+        <div class="col-6 col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h6>Finalizado</h6>
+                    <h4 class="text-success">{{ resolvido }}</h4>
+                </div>
             </div>
         </div>
-    </div>
 
-</div>
+    </div>
 
     <!-- BOTÕES -->
     <div class="d-grid gap-2 mb-3">
@@ -102,7 +101,6 @@
 
             <div class="card-body">
 
-                <!-- PRIORIDADE -->
                 <h6 class="fw-bold">
                     🐾 {{ d[1] }}
 
@@ -114,6 +112,13 @@
                         <span class="badge bg-success">NORMAL</span>
                     {% endif %}
                 </h6>
+
+                <!-- 🔥 IMAGEM ADICIONADA AQUI -->
+                {% if d[4] %}
+                    <img src="data:image/jpeg;base64,{{ d[4] }}"
+                         class="img-fluid rounded mb-2"
+                         style="max-height: 220px; object-fit: cover;">
+                {% endif %}
 
                 <p><strong>ID:</strong> {{ d[0] }}</p>
 
@@ -127,7 +132,6 @@
                     {{ d[3] }}
                 </p>
 
-                <!-- STATUS -->
                 <p>
                     {% if d[5] == 'RECEBIDO' %}
                         <span class="badge bg-secondary w-100 py-2">Recebido</span>
@@ -143,7 +147,6 @@
                     {% endif %}
                 </p>
 
-                <!-- NÃO ATENDIDO -->
                 {% if d[5] != 'FINALIZADO' and d[5] != 'NAO_ATENDIDO' %}
                 <form action="/nao_atendido/{{ d[0] }}" method="post">
                     <input type="text" name="motivo" class="form-control mb-1"
@@ -155,7 +158,6 @@
                 </form>
                 {% endif %}
 
-                <!-- AÇÕES -->
                 <div class="d-grid gap-2 mt-2">
 
                     {% if d[5] == 'RECEBIDO' %}
