@@ -232,5 +232,27 @@ def dashboard():
         dados=dados
     )
 
+@app.route('/usuarios')
+def usuarios():
+    if 'usuario' not in session:
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM usuarios")
+    dados = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('usuarios.html', dados=dados)
+
+@app.route('/gerar_pdf/<int:id>')
+def gerar_pdf(id):
+    if 'usuario' not in session:
+        return redirect('/login')
+
+    return f"PDF da denúncia {id} (em desenvolvimento)"
+
 if __name__ == '__main__':
     app.run()
