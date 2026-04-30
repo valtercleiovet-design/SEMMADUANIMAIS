@@ -7,181 +7,189 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
-        .badge {
-            font-size: 13px;
+        .badge { font-size: 13px; }
+        .btn-sm { border-radius: 8px; }
+        .card {
+            border-radius: 14px;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-
-        .btn-sm {
-            border-radius: 8px;
+        .btn {
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 15px;
         }
+        html, body { overflow-x: hidden; }
+        .container { max-width: 100%; }
     </style>
-
-    <style>
-html, body {
-    overflow-x: hidden;
-}
-
-.container {
-    max-width: 100%;
-}
-     </style>
-
-<style>
-.card {
-    border-radius: 12px;
-}
-
-.btn {
-    border-radius: 10px;
-}
-</style>
-
-<style>
-.card {
-    border-radius: 14px;
-    border: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-</style>
-
-<style>
-.btn {
-    padding: 10px;
-    font-size: 15px;
-}
-</style>
-
 </head>
+
 <body class="bg-light">
 
 <div class="container-fluid py-3">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4>📋 Painel de Denúncias</h4>
-        <a href="/logout" class="btn btn-danger">Sair</a>
+    <h4>📋 Painel de Denúncias</h4>
+    <a href="/logout" class="btn btn-danger">Sair</a>
+</div>
+
+<!-- MENSAGEM DE SUCESSO -->
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div id="msg" class="alert alert-success text-center shadow">
+        {{ messages[0] }}
     </div>
 
-    <!-- 📊 RESUMO -->
+    <script>
+        setTimeout(() => {
+            document.getElementById("msg").style.display = "none";
+        }, 3000);
+    </script>
+  {% endif %}
+{% endwith %}
+
+    <!-- RESUMO -->
     <div class="row mb-3">
 
-       <div class="col-6 col-md-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h6>Total</h6>
-                    <h4>{{ total }}</h4>
-                </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center shadow">
+            <div class="card-body">
+                <h6>Total</h6>
+                <h4>{{ total }}</h4>
             </div>
         </div>
-
-        <div class="col-md-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h6>Recebido</h6>
-                    <h4 class="text-secondary">{{ recebido }}</h4>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h6>Em Fiscalização</h6>
-                    <h4 class="text-warning">{{ fiscalizacao }}</h4>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h6>Resolvido</h6>
-                    <h4 class="text-success">{{ resolvido }}</h4>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <!-- 🔘 BOTÕES PRINCIPAIS -->
-   <div class="d-grid gap-2 mb-3">
-
-        <a href="/dashboard" class="btn btn-primary">
-            📊 Dashboard
-        </a>
-
-        <a href="/usuarios" class="btn btn-dark">
-            👥 Usuários
-        </a>
-
-    </div>
-
-   <div class="card shadow p-3">
-
-        <div>
-
-    {% for d in dados %}
-    <div class="card mb-3 shadow-sm">
-
-        <div class="card-body">
-
-            <h6 class="fw-bold">🐾 {{ d[1] }}</h6>
-
-            <p class="mb-1"><strong>ID:</strong> {{ d[0] }}</p>
-
-            <p class="mb-1">
-                <strong>Descrição:</strong><br>
-                {{ d[2][:80] }}...
-            </p>
-
-            <p class="mb-1">
-                <strong>Local:</strong><br>
-                {{ d[3] }}
-            </p>
-
-            <!-- STATUS -->
-            <p class="mb-2">
-                {% if d[5] == 'Recebido' %}
-                    <span class="badge bg-secondary w-100 py-2">Recebido</span>
-                {% elif d[5] == 'Em fiscalização' %}
-                    <span class="badge bg-warning text-dark">Em fiscalização</span>
-                {% elif d[5] == 'Resolvido' %}
-                    <span class="badge bg-success">Resolvido</span>
-                {% endif %}
-            </p>
-
-            <!-- BOTÕES -->
-            <div class="d-grid gap-2">
-
-                {% if d[5] == 'Recebido' %}
-                <a href="/atualizar_status/{{ d[0] }}/Em_fiscalizacao"
-                   class="btn btn-warning btn-sm"
-                   onclick="return confirm('Iniciar fiscalização?')">
-                   Fiscalizar
-                </a>
-
-                {% elif d[5] == 'Em fiscalização' %}
-                <a href="/atualizar_status/{{ d[0] }}/Resolvido"
-                   class="btn btn-success btn-sm"
-                   onclick="return confirm('Marcar como resolvido?')">
-                   Resolver
-                </a>
-                {% endif %}
-
-                <a href="/mapa/{{ d[0] }}" class="btn btn-info btn-sm">
-                    📍 Mapa
-                </a>
-
-                <a href="/historico/{{ d[0] }}" class="btn btn-dark btn-sm">
-                    📜 Histórico
-                </a>
-
+    <div class="col-6 col-md-3">
+        <div class="card text-center shadow">
+            <div class="card-body">
+                <h6>Recebido</h6>
+                <h4 class="text-secondary">{{ recebido }}</h4>
             </div>
-
         </div>
     </div>
-    {% endfor %}
+
+    <div class="col-6 col-md-3">
+        <div class="card text-center shadow">
+            <div class="card-body">
+                <h6>Em Atendimento</h6>
+                <h4 class="text-warning">{{ fiscalizacao }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card text-center shadow">
+            <div class="card-body">
+                <h6>Finalizado</h6>
+                <h4 class="text-success">{{ resolvido }}</h4>
+            </div>
+        </div>
+    </div>
 
 </div>
+
+    <!-- BOTÕES -->
+    <div class="d-grid gap-2 mb-3">
+        <a href="/dashboard" class="btn btn-primary">📊 Dashboard</a>
+        <a href="/usuarios" class="btn btn-dark">👥 Usuários</a>
+    </div>
+
+    <div class="card shadow p-3">
+
+        {% for d in dados %}
+        <div class="card mb-3 shadow-sm">
+
+            <div class="card-body">
+
+                <!-- PRIORIDADE -->
+                <h6 class="fw-bold">
+                    🐾 {{ d[1] }}
+
+                    {% if d[6] == 'URGENTE' %}
+                        <span class="badge bg-danger">URGENTE</span>
+                    {% elif d[6] == 'PRIORITARIO' %}
+                        <span class="badge bg-warning text-dark">PRIORITÁRIO</span>
+                    {% else %}
+                        <span class="badge bg-success">NORMAL</span>
+                    {% endif %}
+                </h6>
+
+                <p><strong>ID:</strong> {{ d[0] }}</p>
+
+                <p>
+                    <strong>Descrição:</strong><br>
+                    {{ d[2][:80] }}...
+                </p>
+
+                <p>
+                    <strong>Local:</strong><br>
+                    {{ d[3] }}
+                </p>
+
+                <!-- STATUS -->
+                <p>
+                    {% if d[5] == 'RECEBIDO' %}
+                        <span class="badge bg-secondary w-100 py-2">Recebido</span>
+
+                    {% elif d[5] == 'EM_ATENDIMENTO' %}
+                        <span class="badge bg-warning text-dark">Em atendimento</span>
+
+                    {% elif d[5] == 'FINALIZADO' %}
+                        <span class="badge bg-success">Finalizado</span>
+
+                    {% elif d[5] == 'NAO_ATENDIDO' %}
+                        <span class="badge bg-danger">Não atendido</span>
+                    {% endif %}
+                </p>
+
+                <!-- NÃO ATENDIDO -->
+                {% if d[5] != 'FINALIZADO' and d[5] != 'NAO_ATENDIDO' %}
+                <form action="/nao_atendido/{{ d[0] }}" method="post">
+                    <input type="text" name="motivo" class="form-control mb-1"
+                           placeholder="Motivo (ex: acesso difícil)" required>
+
+                    <button class="btn btn-outline-danger btn-sm w-100">
+                        ❌ Não foi possível atender
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- AÇÕES -->
+                <div class="d-grid gap-2 mt-2">
+
+                    {% if d[5] == 'RECEBIDO' %}
+                    <a href="/atualizar_status/{{ d[0] }}/EM_ATENDIMENTO"
+                       class="btn btn-warning btn-sm"
+                       onclick="return confirm('Iniciar atendimento?')">
+                       Atender
+                    </a>
+
+                    {% elif d[5] == 'EM_ATENDIMENTO' %}
+                    <a href="/atualizar_status/{{ d[0] }}/FINALIZADO"
+                       class="btn btn-success btn-sm"
+                       onclick="return confirm('Finalizar atendimento?')">
+                       Finalizar
+                    </a>
+                    {% endif %}
+
+                    <a href="/mapa/{{ d[0] }}" class="btn btn-info btn-sm">
+                        📍 Mapa
+                    </a>
+
+                    <a href="/historico/{{ d[0] }}" class="btn btn-dark btn-sm">
+                       📜 Histórico
+                    </a>
+
+                    <a href="/gerar_pdf/{{ d[0] }}" class="btn btn-outline-dark btn-sm">
+                       📄 Gerar Resumo Técnico
+                    </a>
+
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
 
     </div>
 

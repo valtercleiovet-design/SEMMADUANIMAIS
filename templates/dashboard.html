@@ -28,9 +28,35 @@
         }
 
         #map {
-            height: 300px;
+            height: 500px;
             width: 100%;
             border-radius: 10px;
+        }
+
+        .grafico-box {
+            max-width: 500px;
+            margin: auto;
+            height: 320px;
+        }
+
+        /* 📱 MOBILE AJUSTADO */
+        @media (max-width: 768px) {
+
+            #map {
+                height: 300px;
+            }
+
+            .grafico-box {
+                height: 250px;
+            }
+
+            .kpi {
+                font-size: 22px;
+            }
+
+            h4 {
+                text-align: center;
+            }
         }
     </style>
 
@@ -61,14 +87,14 @@
 
         <div class="col-6 col-md-3">
             <div class="card p-3 text-center bg-warning">
-                <div>Fiscalização</div>
+                <div>Em Atendimento</div>
                 <div class="kpi">{{ fiscalizacao }}</div>
             </div>
         </div>
 
         <div class="col-6 col-md-3">
             <div class="card p-3 text-center bg-success text-white">
-                <div>Resolvido</div>
+                <div>Finalizado</div>
                 <div class="kpi">{{ resolvido }}</div>
             </div>
         </div>
@@ -76,13 +102,15 @@
     </div>
 
     <!-- GRÁFICO -->
-    <div class="card p-3 mb-3">
-        <canvas id="grafico"></canvas>
+    <div class="card p-3 mb-4 text-center">
+        <div class="grafico-box">
+            <canvas id="grafico"></canvas>
+        </div>
     </div>
 
     <!-- MAPA -->
     <div class="card p-3">
-        <h6>📍 Localização das denúncias</h6>
+        <h6 class="mb-3">📍 Localização das denúncias</h6>
         <div id="map"></div>
     </div>
 
@@ -96,7 +124,7 @@
 new Chart(document.getElementById('grafico'), {
     type: 'doughnut',
     data: {
-        labels: ['Recebido', 'Fiscalização', 'Resolvido'],
+        labels: ['Recebido', 'Em Atendimento', 'Finalizado'],
         datasets: [{
             data: [
                 {{ recebido }},
@@ -104,30 +132,48 @@ new Chart(document.getElementById('grafico'), {
                 {{ resolvido }}
             ]
         }]
+    },
+    options: {
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
     }
 });
 
 // MAPA
-var map = L.map('map').setView([-11.72, -61.78], 12); // Rolim de Moura
+var map = L.map('map').setView([-11.72, -61.78], 12);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// MARCADORES
+// DADOS
 var dados = {{ dados|tojson }};
 
+// MARCADORES
 dados.forEach(function(d) {
+
     if (d[3]) {
+
         let partes = d[3].split(',');
         let lat = parseFloat(partes[0]);
         let lon = parseFloat(partes[1]);
 
         if (!isNaN(lat) && !isNaN(lon)) {
-            L.marker([lat, lon]).addTo(map)
-             .bindPopup("🐾 " + d[1]);
+
+            L.marker([lat, lon])
+            .addTo(map)
+            .bindPopup(
+                "<b>🐾 " + d[1] + "</b><br>" +
+                d[2].substring(0,50) + "...<br>" +
+                "<b>Status:</b> " + d[5]
+            );
         }
     }
+
 });
 </script>
 

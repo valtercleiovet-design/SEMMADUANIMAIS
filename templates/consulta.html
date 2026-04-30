@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Consulta de Denúncia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container py-5">
+
+    <div class="card p-4 shadow">
+
+        <h4 class="mb-3">🔎 Consultar Denúncia</h4>
+
+        <form method="POST">
+            <input type="text" name="protocolo" class="form-control mb-3"
+                   placeholder="Digite o protocolo (ex: SEM-2026-000005)" required>
+
+            <button class="btn btn-primary w-100">Consultar</button>
+        </form>
+
+        {% if resultado %}
+        <hr>
+
+        <h5 class="mt-3">📄 Resultado:</h5>
+
+        <p><strong>Tipo:</strong> {{ resultado[0] }}</p>
+        <p><strong>Descrição:</strong> {{ resultado[1] }}</p>
+        <p><strong>Status:</strong> {{ resultado[2] }}</p>
+
+        {% elif resultado is not none %}
+        <hr>
+        <p class="text-danger">❌ Protocolo não encontrado</p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+</html>

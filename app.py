@@ -1,6 +1,10 @@
+from datetime import datetime 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from database import conectar, criar_tabelas
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -20,7 +24,7 @@ if not app.secret_key:
     raise Exception("SECRET_KEY não definida")
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = True
 
 # EMAIL CONFIG
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -38,12 +42,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 criar_tabelas()
 
-# 🔓 HOME
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# 🔐 LOGIN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -53,7 +55,7 @@ def login():
         conn = conectar()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM usuarios WHERE email=?", (email,))
+        cursor.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
         user = cursor.fetchone()
         conn.close()
 
@@ -68,7 +70,6 @@ def login():
 
     return render_template('login.html')
 
-# 🔐 RECUPERAR SENHA
 @app.route('/recuperar', methods=['GET', 'POST'])
 def recuperar():
     if request.method == 'POST':
@@ -76,7 +77,7 @@ def recuperar():
 
         conn = conectar()
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM usuarios WHERE email=?", (email,))
+        cursor.execute("SELECT id FROM usuarios WHERE email=%s", (email,))
         user = cursor.fetchone()
         conn.close()
 
@@ -92,7 +93,6 @@ def recuperar():
 
     return render_template('recuperar.html')
 
-# 🔐 RESETAR SENHA
 @app.route('/resetar/<token>', methods=['GET', 'POST'])
 def resetar_senha(token):
     try:
@@ -106,7 +106,7 @@ def resetar_senha(token):
 
         conn = conectar()
         cursor = conn.cursor()
-        cursor.execute("UPDATE usuarios SET senha=? WHERE email=?", (senha_hash, email))
+        cursor.execute("UPDATE usuarios SET senha=%s WHERE email=%s", (senha_hash, email))
         conn.commit()
         conn.close()
 
@@ -114,13 +114,11 @@ def resetar_senha(token):
 
     return render_template('resetar.html')
 
-# 🚪 LOGOUT
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/login')
 
-# 🚨 DENÚNCIA
 @app.route('/denunciar', methods=['GET', 'POST'])
 def denunciar():
     if request.method == 'POST':
@@ -142,24 +140,31 @@ def denunciar():
 
         cursor.execute("""
             INSERT INTO denuncias (tipo, descricao, localizacao, imagem, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, (tipo, descricao, localizacao, caminho_imagem, "Recebido"))
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        """, (tipo, descricao, localizacao, caminho_imagem, "RECEBIDO"))
 
-        denuncia_id = cursor.lastrowid
+        denuncia_id = cursor.fetchone()[0]
+
+        ano = datetime.now().year
+        protocolo = f"SEM-{ano}-{denuncia_id:06d}"
+
+        cursor.execute("""
+            UPDATE denuncias SET protocolo=%s WHERE id=%s
+        """, (protocolo, denuncia_id))
 
         cursor.execute("""
             INSERT INTO historico (denuncia_id, status, observacao, usuario)
-            VALUES (?, ?, ?, ?)
-        """, (denuncia_id, "Recebido", "Denúncia criada", session.get('usuario', 'anonimo')))
+            VALUES (%s, %s, %s, %s)
+        """, (denuncia_id, "RECEBIDO", "Denúncia criada", session.get('usuario', 'anonimo')))
 
         conn.commit()
         conn.close()
 
-        return render_template('sucesso.html')
+        return render_template('sucesso.html', protocolo=protocolo)
 
     return render_template('denunciar.html')
 
-# 🔒 PAINEL
 @app.route('/painel')
 def painel():
     if not session.get('logado'):
@@ -174,16 +179,13 @@ def painel():
     cursor.execute("SELECT COUNT(*) FROM denuncias")
     total = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'recebido'")
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE status = 'RECEBIDO'")
     recebido = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT COUNT(*) FROM denuncias 
-        WHERE LOWER(status) IN ('em fiscalização','em fiscalizacao')
-    """)
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE status = 'EM_ATENDIMENTO'")
     fiscalizacao = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE LOWER(status) = 'resolvido'")
+    cursor.execute("SELECT COUNT(*) FROM denuncias WHERE status = 'FINALIZADO'")
     resolvido = cursor.fetchone()[0]
 
     cursor.execute("SELECT id, nome FROM usuarios WHERE tipo='fiscal'")
@@ -199,7 +201,6 @@ def painel():
                            resolvido=resolvido,
                            fiscais=fiscais)
 
-# 👥 USUÁRIOS
 @app.route('/usuarios')
 def usuarios():
     if not session.get('logado'):
@@ -215,7 +216,6 @@ def usuarios():
 
     return render_template('usuarios.html', dados=dados)
 
-# 🔥 NOVO: CADASTRAR USUÁRIO (ADMIN)
 @app.route('/cadastrar_usuario', methods=['GET', 'POST'])
 def cadastrar_usuario():
     if not session.get('logado'):
@@ -238,7 +238,7 @@ def cadastrar_usuario():
         try:
             cursor.execute("""
                 INSERT INTO usuarios (nome, email, senha, tipo)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
             """, (nome, email, senha_hash, tipo))
 
             conn.commit()
@@ -251,8 +251,6 @@ def cadastrar_usuario():
 
     return render_template('cadastrar_usuario.html')
 
-# MAPAS E HISTÓRICO
-
 @app.route('/mapa/<int:id>')
 def mapa(id):
     if not session.get('logado'):
@@ -261,7 +259,7 @@ def mapa(id):
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT localizacao FROM denuncias WHERE id=?", (id,))
+    cursor.execute("SELECT localizacao FROM denuncias WHERE id=%s", (id,))
     resultado = cursor.fetchone()
 
     conn.close()
@@ -270,7 +268,6 @@ def mapa(id):
         return "Denúncia não encontrada"
 
     return render_template('mapa.html', localizacao=resultado[0])
-
 
 @app.route('/historico/<int:id>')
 def historico(id):
@@ -283,7 +280,7 @@ def historico(id):
     cursor.execute("""
         SELECT status, observacao, usuario, data
         FROM historico
-        WHERE denuncia_id=?
+        WHERE denuncia_id=%s
         ORDER BY data DESC
     """, (id,))
 
@@ -292,7 +289,7 @@ def historico(id):
     conn.close()
 
     return render_template('historico.html', dados=dados)
-#DASHBOARD
+
 @app.route('/dashboard')
 def dashboard():
     if not session.get('logado'):
@@ -301,14 +298,16 @@ def dashboard():
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM denuncias")
+    cursor.execute("""
+        SELECT id, tipo, descricao, localizacao, imagem, status
+        FROM denuncias
+    """)
     dados = cursor.fetchall()
 
     total = len(dados)
-
-    recebido = len([d for d in dados if d[5].lower() == 'recebido'])
-    fiscalizacao = len([d for d in dados if 'fiscal' in d[5].lower()])
-    resolvido = len([d for d in dados if d[5].lower() == 'resolvido'])
+    recebido = len([d for d in dados if d[5] == 'RECEBIDO'])
+    fiscalizacao = len([d for d in dados if d[5] == 'EM_ATENDIMENTO'])
+    resolvido = len([d for d in dados if d[5] == 'FINALIZADO'])
 
     conn.close()
 
@@ -320,28 +319,24 @@ def dashboard():
         resolvido=resolvido,
         dados=dados
     )
+
 @app.route('/atualizar_status/<int:id>/<novo_status>')
 def atualizar_status(id, novo_status):
     if not session.get('logado'):
         return redirect('/login')
 
-    novo_status = novo_status.replace("_", " ").lower()
-
     mapa_status = {
-        "recebido": "Recebido",
-        "em fiscalizacao": "Em fiscalização",
-        "resolvido": "Resolvido"
+        "EM_ATENDIMENTO": "EM_ATENDIMENTO",
+        "FINALIZADO": "FINALIZADO"
     }
 
     if novo_status not in mapa_status:
         return redirect('/painel')
 
-    novo_status_formatado = mapa_status[novo_status]
-
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status FROM denuncias WHERE id=?", (id,))
+    cursor.execute("SELECT status FROM denuncias WHERE id=%s", (id,))
     resultado = cursor.fetchone()
 
     if not resultado:
@@ -349,33 +344,28 @@ def atualizar_status(id, novo_status):
         return redirect('/painel')
 
     status_atual = resultado[0]
-    status_atual_norm = status_atual.lower().replace("ç", "c")
 
-    # regras de fluxo
-    if status_atual_norm == "resolvido":
+    if status_atual in ["FINALIZADO", "NAO_ATENDIDO"]:
         conn.close()
         return redirect('/painel')
 
-    if status_atual_norm == "recebido" and novo_status != "em fiscalizacao":
+    if status_atual == "RECEBIDO" and novo_status != "EM_ATENDIMENTO":
         conn.close()
         return redirect('/painel')
 
-    if status_atual_norm == "em fiscalizacao" and novo_status != "resolvido":
+    if status_atual == "EM_ATENDIMENTO" and novo_status != "FINALIZADO":
         conn.close()
         return redirect('/painel')
 
-    if status_atual_norm == novo_status:
-        conn.close()
-        return redirect('/painel')
+    cursor.execute(
+        "UPDATE denuncias SET status=%s WHERE id=%s",
+        (novo_status, id)
+    )
 
-    # atualizar status
-    cursor.execute("UPDATE denuncias SET status=? WHERE id=?", (novo_status_formatado, id))
-
-    # histórico
     cursor.execute("""
         INSERT INTO historico (denuncia_id, status, observacao, usuario)
-        VALUES (?, ?, ?, ?)
-    """, (id, novo_status_formatado, "Atualizado pelo sistema", session.get('usuario')))
+        VALUES (%s, %s, %s, %s)
+    """, (id, novo_status, "Atualizado pelo sistema", session.get('usuario')))
 
     conn.commit()
     conn.close()
@@ -390,19 +380,147 @@ def excluir_usuario(id):
     if session.get('tipo') != 'admin':
         return "Acesso negado"
 
-    # impedir apagar a si mesmo
     if id == session.get('usuario_id'):
         return "Você não pode excluir seu próprio usuário"
 
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM usuarios WHERE id=?", (id,))
+    cursor.execute("DELETE FROM usuarios WHERE id=%s", (id,))
     conn.commit()
     conn.close()
 
     return redirect('/usuarios')
 
-# 🚀 RUN
+@app.route('/nao_atendido/<int:id>', methods=['POST'])
+def nao_atendido(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    motivo = request.form['motivo']
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE denuncias
+        SET status = 'NAO_ATENDIDO'
+        WHERE id = %s
+    """, (id,))
+
+    cursor.execute("""
+        INSERT INTO historico (denuncia_id, status, observacao, usuario)
+        VALUES (%s, %s, %s, %s)
+    """, (id, "NAO_ATENDIDO", motivo, session.get('usuario')))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/painel')
+
+@app.route('/gerar_pdf/<int:id>')
+def gerar_pdf(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, tipo, descricao, localizacao, status
+        FROM denuncias
+        WHERE id=%s
+    """, (id,))
+    d = cursor.fetchone()
+
+    conn.close()
+
+    if not d:
+        return "Denúncia não encontrada"
+
+    file_path = f"static/relatorio_{id}.pdf"
+
+    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    conteudo = []
+
+    conteudo.append(Paragraph("ESTADO DE RONDÔNIA", styles['Title']))
+    conteudo.append(Paragraph("PREFEITURA MUNICIPAL DE ROLIM DE MOURA", styles['Normal']))
+    conteudo.append(Paragraph("SEMMADU - Departamento de Políticas Públicas Relacionadas ao Bem-Estar Animal", styles['Normal']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph(f"<b>Resumo Técnico Preliminar Nº {d[0]}</b>", styles['Title']))
+    conteudo.append(Spacer(1, 10))
+
+    conteudo.append(Paragraph(
+        "<font color='red'><b>ATENÇÃO:</b> Documento auxiliar gerado automaticamente. Não substitui relatório técnico oficial.</font>",
+        styles['Normal']
+    ))
+
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph(f"<b>Tipo:</b> {d[1]}", styles['Normal']))
+    conteudo.append(Paragraph(f"<b>Local:</b> {d[3]}", styles['Normal']))
+    conteudo.append(Paragraph(f"<b>Status:</b> {d[4]}", styles['Normal']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph("<b>DESCRIÇÃO:</b>", styles['Heading2']))
+    conteudo.append(Paragraph(d[2], styles['Normal']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph("<b>BASE LEGAL:</b>", styles['Heading2']))
+    conteudo.append(Paragraph("- Lei Federal nº 9.605/98 (Crimes Ambientais)", styles['Normal']))
+    conteudo.append(Paragraph("- Lei Complementar Municipal nº 254/2018 (Bem-estar animal)", styles['Normal']))
+    conteudo.append(Paragraph("- Lei Municipal nº 1677/2009 (Programa de Proteção Animal)", styles['Normal']))
+    conteudo.append(Paragraph("- Lei Estadual nº 6.016/2025 (proibição de acorrentamento)", styles['Normal']))
+    conteudo.append(Spacer(1, 20))
+
+    if d[4] == "FINALIZADO":
+        conclusao = "A denúncia foi atendida e devidamente finalizada."
+    elif d[4] == "NAO_ATENDIDO":
+        conclusao = "A denúncia não pôde ser atendida, conforme justificativa registrada."
+    else:
+        conclusao = "A denúncia encontra-se em andamento."
+
+    conteudo.append(Paragraph("<b>CONCLUSÃO:</b>", styles['Heading2']))
+    conteudo.append(Paragraph(conclusao, styles['Normal']))
+
+    conteudo.append(Spacer(1, 30))
+
+    conteudo.append(Paragraph("__________________________________", styles['Normal']))
+    conteudo.append(Paragraph(session.get('usuario'), styles['Normal']))
+    conteudo.append(Paragraph("Médico Veterinário / Responsável Técnico", styles['Normal']))
+    conteudo.append(Spacer(1, 20))
+    conteudo.append(Paragraph(
+        "<font size=8 color='grey'>Documento gerado automaticamente pelo sistema SEMMADU</font>",
+        styles['Normal']
+    ))
+
+    doc.build(conteudo)
+
+    return redirect(f"/static/relatorio_{id}.pdf")
+
+@app.route('/consulta', methods=['GET', 'POST'])
+def consulta():
+    resultado = None
+
+    if request.method == 'POST':
+        protocolo = request.form['protocolo']
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT tipo, descricao, status
+            FROM denuncias
+            WHERE protocolo = %s
+        """, (protocolo,))
+
+        resultado = cursor.fetchone()
+        conn.close()
+
+    return render_template('consulta.html', resultado=resultado)
+
 if __name__ == '__main__':
     app.run()
