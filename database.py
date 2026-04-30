@@ -1,11 +1,12 @@
-import sqlite3
-from werkzeug.security import generate_password_hash
 import os
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import psycopg2
+from werkzeug.security import generate_password_hash
 
 def conectar():
-    return sqlite3.connect(os.path.join(BASE_DIR, 'banco.db'))
+    return psycopg2.connect(
+        os.getenv("DATABASE_URL"),
+        sslmode='require'
+    )
 
 def criar_tabelas():
     conn = conectar()
@@ -14,7 +15,7 @@ def criar_tabelas():
     # 👤 USUÁRIOS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         nome TEXT,
         email TEXT UNIQUE,
         senha TEXT,
@@ -25,38 +26,32 @@ def criar_tabelas():
     # 🚨 DENÚNCIAS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS denuncias (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         tipo TEXT,
         descricao TEXT,
         localizacao TEXT,
         imagem TEXT,
         status TEXT,
-        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fiscal_id INTEGER,
+        protocolo TEXT
     )
     """)
-
-    # 🔥 GARANTIR COLUNA fiscal_id (SEM QUEBRAR BANCO EXISTENTE)
-    cursor.execute("PRAGMA table_info(denuncias)")
-    colunas = [col[1] for col in cursor.fetchall()]
-
-    if "fiscal_id" not in colunas:
-        cursor.execute("ALTER TABLE denuncias ADD COLUMN fiscal_id INTEGER")
 
     # 📊 HISTÓRICO
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS historico (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         denuncia_id INTEGER,
         status TEXT,
         observacao TEXT,
         usuario TEXT,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (denuncia_id) REFERENCES denuncias(id)
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
-    # 👑 ADMIN PADRÃO (CRIPTOGRAFADO)
-    cursor.execute("SELECT * FROM usuarios WHERE email = ?", ('admin@admin.com',))
+    # 👑 ADMIN PADRÃO
+    cursor.execute("SELECT * FROM usuarios WHERE email = %s", ('admin@admin.com',))
     admin = cursor.fetchone()
 
     if not admin:
@@ -64,7 +59,7 @@ def criar_tabelas():
 
         cursor.execute("""
         INSERT INTO usuarios (nome, email, senha, tipo)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
         """, ('Administrador', 'admin@admin.com', senha_hash, 'admin'))
 
     conn.commit()
