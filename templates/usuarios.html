@@ -17,7 +17,7 @@
     <div class="d-flex gap-2 mb-3">
         <a href="/painel" class="btn btn-secondary">⬅ Voltar</a>
 
-        {% if session['tipo'] == 'admin' %}
+        {% if session.get('tipo') == 'admin' %}
         <a href="{{ url_for('cadastrar_usuario') }}" class="btn btn-success">
             ➕ Novo Usuário
         </a>
