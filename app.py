@@ -5,7 +5,7 @@ from reportlab.lib.pagesizes import A4
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-from database import conectar, criar_tabelas, sqlite 
+from database import conectar, criar_tabelas 
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
@@ -330,6 +330,70 @@ def cadastrar_usuario():
         return redirect(url_for('usuarios'))
 
     return render_template('novo_usuario.html')
+
+@app.route('/consulta', methods=['GET', 'POST'])
+def consulta():
+    resultado = None
+
+    if request.method == 'POST':
+        protocolo = request.form['protocolo']
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT tipo, descricao, status
+            FROM denuncias
+            WHERE protocolo=%s
+        """, (protocolo,))
+
+        resultado = cursor.fetchone()
+        conn.close()
+
+    return render_template('consulta.html', resultado=resultado)
+
+@app.route('/atualizar_status/<int:id>/<status>')
+def atualizar_status(id, status):
+    if not session.get('usuario'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE denuncias SET status=%s WHERE id=%s", (status, id))
+
+    cursor.execute("""
+        INSERT INTO historico (denuncia_id, status, observacao, usuario)
+        VALUES (%s, %s, %s, %s)
+    """, (id, status, "Status atualizado", session.get('usuario')))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/painel')
+
+
+@app.route('/nao_atendido/<int:id>', methods=['POST'])
+def nao_atendido(id):
+    if not session.get('usuario'):
+        return redirect('/login')
+
+    motivo = request.form['motivo']
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE denuncias SET status='NAO_ATENDIDO' WHERE id=%s", (id,))
+
+    cursor.execute("""
+        INSERT INTO historico (denuncia_id, status, observacao, usuario)
+        VALUES (%s, %s, %s, %s)
+    """, (id, "NAO_ATENDIDO", motivo, session.get('usuario')))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/painel')
 
 
 if __name__ == '__main__':
