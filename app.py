@@ -1,3 +1,5 @@
+from io import BytesIO
+from flask import make_response
 from datetime import datetime
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -351,6 +353,58 @@ def recuperar():
         return render_template('recuperar.html', mensagem="Email não encontrado.")
 
     return render_template('recuperar.html')
+
+# ---------------- PDF ----------------
+@app.route('/gerar_pdf/<int:id>')
+def gerar_pdf(id):
+    if not session.get('usuario'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT tipo, descricao, localizacao, status, protocolo
+        FROM denuncias
+        WHERE id=%s
+    """, (id,))
+
+    d = cursor.fetchone()
+    conn.close()
+
+    if not d:
+        return "Denúncia não encontrada"
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    styles = getSampleStyleSheet()
+    conteudo = []
+
+    conteudo.append(Paragraph("RELATÓRIO DE DENÚNCIA", styles['Title']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph(f"<b>Protocolo:</b> {d[4]}", styles['Normal']))
+    conteudo.append(Paragraph(f"<b>Tipo:</b> {d[0]}", styles['Normal']))
+    conteudo.append(Paragraph(f"<b>Status:</b> {d[3]}", styles['Normal']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph("<b>Descrição:</b>", styles['Heading3']))
+    conteudo.append(Paragraph(d[1], styles['Normal']))
+    conteudo.append(Spacer(1, 12))
+
+    conteudo.append(Paragraph("<b>Localização:</b>", styles['Heading3']))
+    conteudo.append(Paragraph(d[2], styles['Normal']))
+
+    doc.build(conteudo)
+
+    buffer.seek(0)
+
+    response = make_response(buffer.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=denuncia_{id}.pdf'
+
+    return response
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
