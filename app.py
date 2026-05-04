@@ -332,6 +332,26 @@ def dashboard():
                            resolvido=resolvido,
                            dados=dados)
 
+@app.route('/recuperar', methods=['GET', 'POST'])
+def recuperar():
+    if request.method == 'POST':
+        email = request.form['email']
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM usuarios WHERE email=%s", (email,))
+        user = cursor.fetchone()
+
+        conn.close()
+
+        if user:
+            return render_template('recuperar.html', mensagem="Email encontrado. Em breve enviaremos instruções.")
+
+        return render_template('recuperar.html', mensagem="Email não encontrado.")
+
+    return render_template('recuperar.html')
+
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
