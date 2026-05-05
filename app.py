@@ -458,6 +458,31 @@ def finalizar(id):
     conn.close()
 
     return redirect('/painel')
+
+# VER ANEXO
+
+@app.route('/ver_anexo/<int:id>')
+def ver_anexo(id):
+    if not session.get('usuario'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT anexo FROM denuncias WHERE id=%s", (id,))
+    resultado = cursor.fetchone()
+    conn.close()
+
+    if not resultado or not resultado[0]:
+        return "Anexo não encontrado"
+
+    arquivo_bytes = base64.b64decode(resultado[0])
+
+    response = make_response(arquivo_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=anexo_{id}.pdf'
+
+    return response
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
