@@ -425,6 +425,14 @@ def finalizar(id):
     anexo_base64 = None
 
     if arquivo and arquivo.filename != '':
+
+       if not arquivo.filename.lower().endswith('.pdf'):
+           flash("❌ Apenas arquivos PDF são permitidos")
+           return redirect('/painel')
+
+    anexo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
+
+    if arquivo and arquivo.filename != '':
         anexo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
 
     conn = conectar()
