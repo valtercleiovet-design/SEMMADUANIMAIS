@@ -426,14 +426,17 @@ def finalizar(id):
 
     if arquivo and arquivo.filename != '':
 
-       if not arquivo.filename.lower().endswith('.pdf'):
-           flash("❌ Apenas arquivos PDF são permitidos")
-           return redirect('/painel')
+        if not arquivo.filename.lower().endswith('.pdf'):
+            flash("❌ Apenas arquivos PDF são permitidos")
+            return redirect('/painel')
 
-    anexo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
+        arquivo_bytes = arquivo.read()
 
-    if arquivo and arquivo.filename != '':
-        anexo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
+        if len(arquivo_bytes) == 0:
+            flash("❌ Erro ao enviar o arquivo")
+            return redirect('/painel')
+
+        anexo_base64 = base64.b64encode(arquivo_bytes).decode('utf-8')
 
     conn = conectar()
     cursor = conn.cursor()
@@ -455,7 +458,6 @@ def finalizar(id):
     conn.close()
 
     return redirect('/painel')
-
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
