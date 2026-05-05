@@ -506,6 +506,34 @@ def arquivar_tudo():
 
     return "Denúncias arquivadas com sucesso"
 
+#ARQUIVADAS
+
+@app.route('/arquivadas')
+def arquivadas():
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, tipo, descricao, localizacao, imagem, status, protocolo, parecer, anexo
+        FROM denuncias
+        WHERE status = 'ARQUIVADO'
+        ORDER BY id DESC
+    """)
+
+    dados = cursor.fetchall()
+    conn.close()
+
+    return render_template('painel.html', dados=dados,
+                           total=len(dados),
+                           recebido=0,
+                           fiscalizacao=0,
+                           resolvido=0,
+                           fiscais=[])
+
+
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
