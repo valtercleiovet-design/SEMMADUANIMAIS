@@ -127,6 +127,7 @@ def painel():
     cursor.execute("""
     SELECT id, tipo, descricao, localizacao, imagem, status, protocolo, parecer, anexo
     FROM denuncias
+    WHERE status != 'ARQUIVADO'
     ORDER BY id DESC
 """)
     dados = cursor.fetchall()
@@ -484,11 +485,26 @@ def ver_anexo(id):
     response.headers['Content-Disposition'] = f'inline; filename=anexo_{id}.pdf'
 
     return response
+
 #RETORNO ERRO
 
 @app.errorhandler(413)
 def arquivo_grande(e):
     return "Arquivo muito grande (máx 5MB)", 413
+
+#ARQUIVAR TUDO
+
+@app.route('/arquivar_tudo')
+def arquivar_tudo():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE denuncias SET status='ARQUIVADO'")
+
+    conn.commit()
+    conn.close()
+
+    return "Denúncias arquivadas com sucesso"
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
