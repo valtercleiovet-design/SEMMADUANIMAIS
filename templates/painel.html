@@ -135,9 +135,31 @@
                 <p>
                     {% if d[5] == 'RECEBIDO' %}
                         <span class="badge bg-secondary w-100 py-2">Recebido</span>
+                    {% if d[7] %}
+                    <p><strong>📝 Parecer:</strong><br>{{ d[7] }}</p>
+                    {% endif %}
 
+                    {% if d[8] %}
+                    <a href="data:application/pdf;base64,{{ d[8] }}" target="_blank"
+                       class="btn btn-outline-secondary btn-sm mb-2">
+                      📎 Ver anexo
+                    </a>
+                    {% endif %}
                     {% elif d[5] == 'EM_ATENDIMENTO' %}
-                        <span class="badge bg-warning text-dark">Em atendimento</span>
+
+                    <form action="/finalizar/{{ d[0] }}" method="post" enctype="multipart/form-data">
+
+                        <textarea name="parecer" class="form-control mb-2"
+                           placeholder="Parecer técnico da visita..." required></textarea>
+                        <input type="file" name="anexo"
+                           class="form-control mb-2"
+                           accept=".pdf,.doc,.docx">
+
+                        <button class="btn btn-success w-100 btn-sm">
+                            Finalizar com parecer
+                        </button>
+
+                    </form>
 
                     {% elif d[5] == 'FINALIZADO' %}
                         <span class="badge bg-success">Finalizado</span>
@@ -168,11 +190,7 @@
                     </a>
 
                     {% elif d[5] == 'EM_ATENDIMENTO' %}
-                    <a href="/atualizar_status/{{ d[0] }}/FINALIZADO"
-                       class="btn btn-success btn-sm"
-                       onclick="return confirm('Finalizar atendimento?')">
-                       Finalizar
-                    </a>
+                    
                     {% endif %}
 
                     <a href="/mapa/{{ d[0] }}" class="btn btn-info btn-sm">

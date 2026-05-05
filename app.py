@@ -123,7 +123,11 @@ def painel():
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM denuncias ORDER BY id DESC")
+    cursor.execute("""
+    SELECT id, tipo, descricao, localizacao, imagem, status, protocolo, parecer, anexo
+    FROM denuncias
+    ORDER BY id DESC
+""")
     dados = cursor.fetchall()
 
     cursor.execute("SELECT COUNT(*) FROM denuncias")
@@ -406,27 +410,43 @@ def gerar_pdf(id):
 
     return response
 
-#APAGAR DEPOIS
-@app.route('/ajustar_banco')
-def ajustar_banco():
+#PARECER + ANEXO
+
+import base64
+
+@app.route('/finalizar/<int:id>', methods=['POST'])
+def finalizar(id):
+    if not session.get('usuario'):
+        return redirect('/login')
+
+    parecer = request.form.get('parecer')
+
+    arquivo = request.files.get('anexo')
+    anexo_base64 = None
+
+    if arquivo and arquivo.filename != '':
+        anexo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
+
     conn = conectar()
     cursor = conn.cursor()
 
-    try:
-        cursor.execute("ALTER TABLE denuncias ADD COLUMN parecer TEXT")
-    except:
-        pass
+    cursor.execute("""
+        UPDATE denuncias
+        SET status='FINALIZADO',
+            parecer=%s,
+            anexo=%s
+        WHERE id=%s
+    """, (parecer, anexo_base64, id))
 
-    try:
-        cursor.execute("ALTER TABLE denuncias ADD COLUMN anexo TEXT")
-    except:
-        pass
+    cursor.execute("""
+        INSERT INTO historico (denuncia_id, status, observacao, usuario)
+        VALUES (%s, %s, %s, %s)
+    """, (id, "FINALIZADO", "Finalizado com parecer técnico", session.get('usuario')))
 
     conn.commit()
     conn.close()
 
-    return "Banco atualizado com sucesso"
-
+    return redirect('/painel')
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
