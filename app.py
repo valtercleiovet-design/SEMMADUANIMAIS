@@ -17,12 +17,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB
 
 if not app.secret_key:
     raise Exception("SECRET_KEY não definida")
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = True
 
 # EMAIL
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -483,6 +484,12 @@ def ver_anexo(id):
     response.headers['Content-Disposition'] = f'inline; filename=anexo_{id}.pdf'
 
     return response
+#RETORNO ERRO
+
+@app.errorhandler(413)
+def arquivo_grande(e):
+    return "Arquivo muito grande (máx 5MB)", 413
+
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
