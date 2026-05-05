@@ -406,6 +406,28 @@ def gerar_pdf(id):
 
     return response
 
+#APAGAR DEPOIS
+@app.route('/ajustar_banco')
+def ajustar_banco():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("ALTER TABLE denuncias ADD COLUMN parecer TEXT")
+    except:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE denuncias ADD COLUMN anexo TEXT")
+    except:
+        pass
+
+    conn.commit()
+    conn.close()
+
+    return "Banco atualizado com sucesso"
+
+
 # ---------------- RUN ----------------
 if __name__ == '__main__':
     app.run()
