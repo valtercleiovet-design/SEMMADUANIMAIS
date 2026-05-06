@@ -533,6 +533,28 @@ def arquivadas():
                            resolvido=0,
                            fiscais=[])
 
+#ROTA PARA BOTÃO DE ARQUIVAMENTO
+
+@app.route('/arquivar/<int:id>')
+def arquivar(id):
+    if not session.get('logado'):
+        return redirect('/login')
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE denuncias SET status='ARQUIVADO' WHERE id=%s", (id,))
+
+    # 🔥 registra no histórico (opcional, mas recomendado)
+    cursor.execute("""
+        INSERT INTO historico (denuncia_id, status, observacao, usuario)
+        VALUES (%s, %s, %s, %s)
+    """, (id, "ARQUIVADO", "Denúncia arquivada", session.get('usuario')))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/painel')
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
