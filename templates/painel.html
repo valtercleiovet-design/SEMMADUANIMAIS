@@ -212,7 +212,7 @@
                     
                     {% endif %}
 
-                    {% if d[5] != 'ARQUIVADO' and d[5] != 'FINALIZADO' %}
+                    {% if d[5] != 'ARQUIVADO' %}
                     <a href="/arquivar/{{ d[0] }}" 
                        class="btn btn-outline-secondary btn-sm"
                        onclick="return confirm('Arquivar esta denúncia?')">
