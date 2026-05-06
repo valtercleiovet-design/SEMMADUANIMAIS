@@ -212,6 +212,14 @@
                     
                     {% endif %}
 
+                    {% if d[5] != 'ARQUIVADO' and d[5] != 'FINALIZADO' %}
+                    <a href="/arquivar/{{ d[0] }}" 
+                       class="btn btn-outline-secondary btn-sm"
+                       onclick="return confirm('Arquivar esta denúncia?')">
+                      📂 Arquivar
+                    </a>
+                    {% endif %}
+
                     <a href="/mapa/{{ d[0] }}" class="btn btn-info btn-sm">
                         📍 Mapa
                     </a>
